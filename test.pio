@@ -1,0 +1,59 @@
+.define public HBLANK_START_IRQ 6
+.define public HBLANK_END_IRQ 5
+.define public VBLANK_END_IRQ 7
+
+.program hsync
+.side_set 1
+
+.wrap_target
+  irq HBLANK_START_IRQ          side 1           ; high 14 cycles ; 2 cycles
+  irq clear HBLANK_END_IRQ      side 1           ; 1 cycle; t3
+  set x, 21                     side 1      [11] ; 12 cycles ; t14
+hsync:
+  jmp x--, hsync                side 0      [7]  ; 176 cycles ; t190
+  set x, 11                     side 0      [1]  ; 2 cycles; t192
+  irq HBLANK_END_IRQ            side 0      [1]  ; send video signal ; 2 cycles; t194;
+video:
+  jmp x--, video                side 0      [8]  ; 108 cycles; t300
+  set x, 24                     side 0      [1]  ; 2 cycles; t302
+line:
+  jmp x--, line                 side 1      [15] ; 400 cycles; t702
+.wrap
+
+.program vsync
+.side_set 1 opt
+
+  set x, 21
+  mov isr, x
+  in x, 4                               ; isr = 21 << 4 + (21 & 0b1111) = 341
+.wrap_target
+  set y, 3                      side 0  ; vsync: low for 4 lines
+vsync:
+  wait 1 irq HBLANK_START_IRQ
+  jmp y--, vsync
+  set y, 23                     side 1  ; back_porch: high for 24 lines
+back_porch:
+  wait 1 irq HBLANK_START_IRQ
+  jmp y--, back_porch
+  irq VBLANK_END_IRQ                    ; (set side 0 to debug)
+  mov y, isr                            ; active video: high for 342 lines
+active_video:
+  wait 1 irq HBLANK_START_IRQ
+  jmp y--, active_video
+.wrap
+
+.program video
+
+.wrap_target
+  pull block
+  out isr, 16               ; x resolution - 1
+  out y, 16                 ; y resolution - 1
+  wait 1 irq VBLANK_END_IRQ
+send_line:
+  mov x, isr
+  wait 1 irq HBLANK_END_IRQ
+send_dot:
+  out pins, 1
+  jmp x--, send_dot
+  jmp y--, send_line
+.wrap
