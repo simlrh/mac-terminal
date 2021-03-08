@@ -5,55 +5,75 @@
 .program hsync
 .side_set 1
 
+; run at 15667200 Hz
+; program outputs hsync signal and synchronises other programs
+; side_set pin is hsync output
+; sets HBLANK_START_IRQ at start of line
+; sets HBLANK_END_IRQ when video scanline should begin
+
 .wrap_target
-  irq HBLANK_START_IRQ          side 1           ; high 14 cycles ; 2 cycles
-  irq clear HBLANK_END_IRQ      side 1           ; 1 cycle; t3
-  set x, 21                     side 1      [11] ; 12 cycles ; t14
+  irq HBLANK_START_IRQ          side 1
+  set x, 21                     side 1      [12] ; front porch: high 14 cycles
 hsync:
-  jmp x--, hsync                side 0      [7]  ; 176 cycles ; t190
-  set x, 11                     side 0      [1]  ; 2 cycles; t192
-  irq HBLANK_END_IRQ            side 0      [1]  ; send video signal ; 2 cycles; t194;
+  jmp x--, hsync                side 0      [7]  ; hsync: low 178 cycles
+  set x, 11                     side 0      [1]
+  irq HBLANK_END_IRQ            side 0           ; active video: low 110 cycles
+  irq clear HBLANK_END_IRQ      side 0           ; only trigger video if program was already waiting
 video:
-  jmp x--, video                side 0      [8]  ; 108 cycles; t300
-  set x, 24                     side 0      [1]  ; 2 cycles; t302
+  jmp x--, video                side 0      [8]
+  set x, 24                     side 1      [1]
 line:
-  jmp x--, line                 side 1      [15] ; 400 cycles; t702
+  jmp x--, line                 side 1      [15] ; active video: high 402 cycles
 .wrap
 
 .program vsync
 .side_set 1 opt
 
-  set x, 21
-  mov isr, x
-  in x, 4                               ; isr = 21 << 4 + (21 & 0b1111) = 341
+; run at full clock speed, timing is provided by HBLANK_START_IRQ
+; program outputs vsync signal and synchronises frame data
+; side_set pin is vsync output
+; sets VBLANK_END_IRQ when video frame should begin
+
+  out isr, 32                           ; configure y resolution by outputing 341
 .wrap_target
   set y, 3                      side 0  ; vsync: low for 4 lines
 vsync:
   wait 1 irq HBLANK_START_IRQ
   jmp y--, vsync
-  set y, 23                     side 1  ; back_porch: high for 24 lines
+  set y, 23                     side 1  ; back porch: high for 24 lines
 back_porch:
   wait 1 irq HBLANK_START_IRQ
   jmp y--, back_porch
-  irq VBLANK_END_IRQ                    ; (set side 0 to debug)
-  mov y, isr                            ; active video: high for 342 lines
+  irq VBLANK_END_IRQ                    ; active video: high for 342 lines
+  mov y, isr
 active_video:
   wait 1 irq HBLANK_START_IRQ
   jmp y--, active_video
 .wrap
 
 .program video
+.side_set 1 opt
 
+; run at 2 * 15667200 Hz (1 cycle data, 1 cycle loop)
+; program outputs 1 frame then loops
+; out pin is video data
+; each frame is 512 * 342 1bit values
+; each frame is preceded by resolution as a pair of 16 bit unsigned integers
+; (because there isn't enough space in program memory to construct them as we do in the vsync program)
+
+  out x, 32                         ; configure x resolution by outputing 511
 .wrap_target
-  pull block
-  out isr, 16               ; x resolution - 1
-  out y, 16                 ; y resolution - 1
+  set y, 21                         ; generate y resolution every frame
+  mov isr, y
+  in y, 4
+  mov y, isr                        ; y = 21 << 4 + (21 & 0b1111) = 341
+  mov isr, x                        ; store x resolution in isr
   wait 1 irq VBLANK_END_IRQ
 send_line:
-  mov x, isr
   wait 1 irq HBLANK_END_IRQ
 send_dot:
   out pins, 1
   jmp x--, send_dot
-  jmp y--, send_line
+  mov x, isr
+  jmp y--, send_line    side 0      ; clear video signal between lines
 .wrap

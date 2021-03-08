@@ -1,3 +1,8 @@
 Debug
 Release
 build
+
+session.sr
+session.pvs
+
+test.vim

@@ -13,8 +13,12 @@ add_executable(test)
 
 pico_generate_pio_header(test ${CMAKE_CURRENT_LIST_DIR}/test.pio)
 
-target_sources(test PRIVATE test.c)
+target_sources(test PRIVATE test.c crt.c)
 
-target_link_libraries(test PRIVATE pico_stdlib hardware_pio)
+target_link_libraries(test PRIVATE pico_stdlib hardware_pio hardware_dma)
 
 pico_add_extra_outputs(test)
+
+add_custom_command(TARGET test POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/compile_commands.json ${CMAKE_CURRENT_LIST_DIR}
+)
