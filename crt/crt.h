@@ -27,6 +27,7 @@ void initVideoPIO(PIO pio, uint video_pin, uint hsync_pin, uint vsync_pin);
 void initVideoDMA(video_buffers *buffers);
 void startVideo(video_buffers *buffers, PIO pio);
 void swapBuffers(video_buffers *buffers);
+
 #else
 #define CRT_HEADER
 #endif

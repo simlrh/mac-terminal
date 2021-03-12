@@ -9,8 +9,7 @@
 
 #include "pico/stdlib.h"
 
-#include "test.pio.h"
-#include "crt.h"
+#include "crt/crt.h"
 
 int main() {
   stdio_init_all();
@@ -20,12 +19,12 @@ int main() {
   int hsync_pin = 3;
   int video_pin = 4;
 
-  PIO pio = pio0;
-  initVideoPIO(pio, video_pin, hsync_pin, vsync_pin);
-  video_buffers *buffers = createVideoBuffers();
-  initVideoDMA(buffers);
-  startVideo(buffers, pio);
+  PIO video_pio = pio0;
 
+  video_buffers *buffers = createVideoBuffers();
+  initVideoPIO(video_pio, video_pin, hsync_pin, vsync_pin);
+  initVideoDMA(buffers);
+  startVideo(buffers, video_pio);
 
   char patterns[3] = {
     0xF0,

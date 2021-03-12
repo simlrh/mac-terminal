@@ -5,7 +5,7 @@
 #include "hardware/dma.h"
 #include "hardware/clocks.h"
 
-#include "test.pio.h"
+#include "crt.pio.h"
 #include "crt.h"
 
 video_buffers *createVideoBuffers() {
