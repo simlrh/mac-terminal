@@ -26,13 +26,29 @@ int main() {
   initVideoDMA(buffers);
   startVideo(buffers, pio);
 
+
   char patterns[3] = {
-    0xFF,
+    0xF0,
     0xAA,
     0x00,
   };
 
   while(true) {
+    {
+      int line_size = 512 / 8;
+      memset(buffers->backBuffer, 0, VIDEO_BUFFER_SIZE);
+      for (int y = 0; y < 342; y++) {
+        (*buffers->backBuffer)[y * line_size] = 0b00000011;
+        (*buffers->backBuffer)[(y + 1) * line_size - 1] = 0b11000000;
+        if (y <2 || y > 339) {
+          for (int x = 0; x < line_size; x++) {
+            (*buffers->backBuffer)[x + y * line_size] = 0xFF;
+          }
+        }
+      }
+      swapBuffers(buffers);
+      sleep_ms(5000);
+    }
     for (int i = 0; i < 3; i++) {
       memset(buffers->backBuffer, patterns[i], VIDEO_BUFFER_SIZE);
       swapBuffers(buffers);

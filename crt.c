@@ -45,7 +45,7 @@ void initVideoPIO(PIO pio, uint video_pin, uint hsync_pin, uint vsync_pin) {
   sm_config_set_out_pins(&video_config, video_pin, 1);
   sm_config_set_sideset_pins(&video_config, video_pin);
   // Autopull
-  sm_config_set_out_shift(&video_config, false, true, 32);
+  sm_config_set_out_shift(&video_config, true, true, 32);
   // Use ISR for arithmetic
   sm_config_set_in_shift(&video_config, false, false, 0);
   pio_sm_set_consecutive_pindirs(pio, VIDEO_SM, video_pin, 1, true);
@@ -93,7 +93,7 @@ void initVideoDMA(video_buffers *buffers) {
       &video_config,
       &pio0_hw->txf[0], // Write address (only need to set this once)
       NULL,             // Don't provide a read address yet
-      VIDEO_BUFFER_LENGTH, // Write the same value many times, then halt and interrupt
+      VIDEO_BUFFER_SIZE / 4, // Write the same value many times, then halt and interrupt
       false             // Don't start yet
   );
 
@@ -105,7 +105,7 @@ void startVideo(video_buffers *buffers, PIO pio) {
   dma_channel_start(buffers->bufferSelectDMAChannel);
   // Pre-fill PIO TX queue
   while (
-    dma_hw->ch[buffers->videoDMAChannel].al3_transfer_count == VIDEO_BUFFER_LENGTH
+    dma_hw->ch[buffers->videoDMAChannel].al3_transfer_count == VIDEO_BUFFER_SIZE / 4
     ) {
     tight_loop_contents();
   }
@@ -113,7 +113,7 @@ void startVideo(video_buffers *buffers, PIO pio) {
 }
 
 void swapBuffers(video_buffers *buffers) {
-  uint32_t *tempBuffer = buffers->frontBuffer;
+  uint8_t (*tempBuffer)[VIDEO_BUFFER_SIZE] = buffers->frontBuffer;
   buffers->frontBuffer = buffers->backBuffer;
   buffers->backBuffer = tempBuffer;
 }

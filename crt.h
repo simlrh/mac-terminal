@@ -7,8 +7,6 @@
 #define VIDEO_FRAME_RESOLUTION 175104
 // bytes
 #define VIDEO_BUFFER_SIZE 21888
-// 32-bit words
-#define VIDEO_BUFFER_LENGTH 5472
 
 #define VIDEO_SM 0
 #define HSYNC_SM 1
@@ -16,10 +14,10 @@
 
 typedef struct video_buffers
 {
-  void *backBuffer;
-  void *frontBuffer;
-  uint32_t buffer1[VIDEO_BUFFER_LENGTH];
-  uint32_t buffer2[VIDEO_BUFFER_LENGTH];
+  uint8_t (*backBuffer)[VIDEO_BUFFER_SIZE];
+  uint8_t (*frontBuffer)[VIDEO_BUFFER_SIZE];
+  uint8_t buffer1[VIDEO_BUFFER_SIZE];
+  uint8_t buffer2[VIDEO_BUFFER_SIZE];
   int bufferSelectDMAChannel;
   int videoDMAChannel;
 } video_buffers;
