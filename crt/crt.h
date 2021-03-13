@@ -3,9 +3,6 @@
 #include "hardware/pio.h"
 #include "pico/stdlib.h"
 
-// bits
-#define VIDEO_FRAME_RESOLUTION 175104
-// bytes
 #define VIDEO_BUFFER_SIZE 21888
 
 #define VIDEO_SM 0

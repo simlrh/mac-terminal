@@ -1,4 +1,5 @@
 #include "pico/stdlib.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -85,7 +86,7 @@ void initVideoDMA(video_buffers *buffers) {
   channel_config_set_transfer_data_size(&video_config, DMA_SIZE_32);
   channel_config_set_read_increment(&video_config, true);
   channel_config_set_dreq(&video_config, DREQ_PIO0_TX0);
-  // And loop back to sending resolution
+  // And loop back to selecting front buffer
   channel_config_set_chain_to(&video_config, buffer_select_chan);
 
   dma_channel_configure(

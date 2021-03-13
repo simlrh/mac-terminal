@@ -1,8 +1,8 @@
 Debug
 Release
 build
+compile_commands.json
 
 session.sr
 session.pvs
-
 test.vim

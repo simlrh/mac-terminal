@@ -12,8 +12,9 @@ pico_sdk_init()
 add_executable(mac_terminal)
 
 pico_generate_pio_header(mac_terminal ${CMAKE_CURRENT_LIST_DIR}/crt/crt.pio)
+pico_generate_pio_header(mac_terminal ${CMAKE_CURRENT_LIST_DIR}/adb/adb.pio)
 
-target_sources(mac_terminal PRIVATE main.c crt/crt.c)
+target_sources(mac_terminal PRIVATE main.c crt/crt.c adb/adb.c)
 
 target_link_libraries(mac_terminal PRIVATE pico_stdlib hardware_pio hardware_dma)
 
