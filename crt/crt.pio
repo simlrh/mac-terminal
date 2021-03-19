@@ -16,8 +16,8 @@
   set x, 21                     side 1      [12] ; front porch: high 14 cycles
 hsync:
   jmp x--, hsync                side 0      [7]  ; hsync: low 178 cycles
-  set x, 11                     side 0      [1]
-  irq HBLANK_END_IRQ            side 0           ; active video: low 110 cycles
+  irq HBLANK_END_IRQ            side 0      [1]  ; active video: low 110 cycles
+  set x, 11                     side 0         
   irq clear HBLANK_END_IRQ      side 0           ; only trigger video if program was already waiting
 video:
   jmp x--, video                side 0      [8]

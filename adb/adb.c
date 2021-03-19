@@ -17,7 +17,7 @@
 
 void initAdbPio(PIO pio, uint adb_sm, uint adb_pin) {
   float clock_freq = clock_get_hz(clk_sys);
-  float adb_freq = 30000;
+  float adb_freq = 30300;
 
   pio_gpio_init(pio, adb_pin);
   pio_gpio_init(pio, adb_pin + 1);

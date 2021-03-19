@@ -12,13 +12,45 @@
 #include "crt/crt.h"
 #include "adb/adb.h"
 
+ void power_irq(uint gpio, uint32_t events) {
+   printf("Power button pressed\n");
+ }
+
 int main() {
   stdio_init_all();
   printf("Initialising...\n");
 
+  // VIDEO
+
+  PIO video_pio = pio0;
+  int vsync_pin = 2;
+  int hsync_pin = 3;
+  int video_pin = 4;
+  int brightness_pin = 5;
+
+  gpio_init(brightness_pin);
+  gpio_set_dir(brightness_pin, GPIO_OUT);
+  gpio_put(brightness_pin, 1);
+
+  video_buffers *buffers = createVideoBuffers();
+  initVideoPIO(video_pio, video_pin, hsync_pin, vsync_pin);
+  initVideoDMA(buffers);
+  startVideo(buffers, video_pio);
+
+  memset(buffers->backBuffer, 0xFF, VIDEO_BUFFER_SIZE);
+  swapBuffers(buffers);
+
+  // ADB
+
   PIO adb_pio = pio1;
   int adb_sm = 0;
-  int adb_pin = 5;
+  int adb_pin = 6;
+  int power_pin = 7;
+
+  gpio_init(power_pin);
+  gpio_set_dir(power_pin, GPIO_IN);
+  gpio_pull_up(power_pin);
+  gpio_set_irq_enabled_with_callback(power_pin, 0b0100, true, power_irq);
 
   initAdbPio(adb_pio, adb_sm, adb_pin);
   char op;
@@ -26,6 +58,7 @@ int main() {
   uint8_t reg;
   uint8_t data_len;
   uint8_t data[9];
+
   while (true) {
     if (adbReceivedServiceRequest(adb_pio)) {
       printf("Service request received\n");
@@ -74,17 +107,9 @@ int main() {
         break;
     }
   }
+  //*/
 
-  PIO video_pio = pio0;
-  int vsync_pin = 2;
-  int hsync_pin = 3;
-  int video_pin = 4;
-
-  video_buffers *buffers = createVideoBuffers();
-  initVideoPIO(video_pio, video_pin, hsync_pin, vsync_pin);
-  initVideoDMA(buffers);
-  startVideo(buffers, video_pio);
-
+  /*
   char patterns[3] = {
     0xF0,
     0xAA,
@@ -115,4 +140,5 @@ int main() {
       sleep_ms(5000);
     }
   }
+  */
 }
