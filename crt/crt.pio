@@ -12,18 +12,18 @@
 ; sets HBLANK_END_IRQ when video scanline should begin
 
 .wrap_target
-  irq HBLANK_START_IRQ          side 1
-  set x, 21                     side 1      [12] ; front porch: high 14 cycles
+  set x, 21                     side 1
+  irq HBLANK_START_IRQ          side 1      [13] ; front porch: high 14 cycles
 hsync:
   jmp x--, hsync                side 0      [7]  ; hsync: low 178 cycles
-  set x, 11                     side 0      [1]
-  irq HBLANK_END_IRQ            side 0           ; active video: low 110 cycles
-  irq clear HBLANK_END_IRQ      side 0           ; only trigger video if program was already waiting
+  set x, 11                     side 0
+  irq HBLANK_END_IRQ            side 0      [1]  ; active video: low 110 cycles
+  irq clear HBLANK_END_IRQ      side 0
 video:
   jmp x--, video                side 0      [8]
-  set x, 24                     side 1      [1]
+  set x, 24                     side 1      [1]  ; active video: high 402 cycles
 line:
-  jmp x--, line                 side 1      [15] ; active video: high 402 cycles
+  jmp x--, line                 side 1      [15]
 .wrap
 
 .program vsync
@@ -44,8 +44,8 @@ vsync:
 back_porch:
   wait 1 irq HBLANK_START_IRQ
   jmp y--, back_porch
-  irq VBLANK_END_IRQ                    ; active video: high for 342 lines
   mov y, isr
+  irq nowait VBLANK_END_IRQ                    ; active video: high for 342 lines
 active_video:
   wait 1 irq HBLANK_START_IRQ
   jmp y--, active_video
@@ -74,6 +74,6 @@ send_line:
 send_dot:
   out pins, 1
   jmp x--, send_dot
-  mov x, isr
-  jmp y--, send_line    side 0      ; clear video signal between lines
+  mov x, isr            side 0
+  jmp y--, send_line                ; clear video signal between lines
 .wrap
