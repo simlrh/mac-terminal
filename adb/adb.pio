@@ -10,17 +10,17 @@ start:
   out pc, 32
 
 PUBLIC send_command:
-  set x, 22                 side 0
+  set x, 22             [1] side 0
 attention:
-  jmp x--, attention
+  jmp x--, attention    [1]
 sync:
-  set x, 7              [1] side 1
+  set x, 7              [3] side 1
 command_byte:
-  nop                       side 0
-  out pins, 1
-  jmp x--, command_byte     side 1
-command_stop:
   nop                   [1] side 0
+  out pins, 1           [1]
+  jmp x--, command_byte [1] side 1
+command_stop:
+  nop                   [3] side 0
   set pindirs, 0            side 1
 service_request:
   jmp pin, start
@@ -30,27 +30,27 @@ service_request:
 
 PUBLIC write_data:
 stop_to_start:
-  nop                   [1] side 1
+  nop                   [3] side 1
 start_bit:
-  nop                       side 0
-  out y, 8              [1] side 1    ; data length in bits - 1
+  nop                   [1] side 0
+  out y, 8              [3] side 1    ; data length in bits - 1
 send_bits:
-  nop                       side 0
-  out pins, 1                         ; 2 - 8 bytes of data
-  jmp y--, send_bits        side 1
+  nop                   [1] side 0
+  out pins, 1           [1]           ; 2 - 8 bytes of data
+  jmp y--, send_bits    [1] side 1
 data_stop:
-  nop                       side 0
+  nop                   [1] side 0
   jmp start
 
 PUBLIC read_data:
   set pindirs, 0
 read_bit:
-  wait 0 pin 0
+  wait 0 pin 0          [2]
   in pins, 1
   jmp read_bit
 
 PUBLIC send_reset:
   set x, 29
 reset:
-  jmp x--, reset         [3] side 0
+  jmp x--, reset         [7] side 0
   jmp start

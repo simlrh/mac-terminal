@@ -3,6 +3,8 @@ Release
 build
 compile_commands.json
 
+fonts/font_data.h
+
 session.sr
 session.pvs
 test.vim

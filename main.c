@@ -11,10 +11,45 @@
 
 #include "crt/crt.h"
 #include "adb/adb.h"
+#include "fonts/font.h"
 
- void power_irq(uint gpio, uint32_t events) {
-   printf("Power button pressed\n");
- }
+#include "fonts/font_data.h"
+
+#include "terminal/screen.h"
+
+#define LINE_BYTES 64
+
+void yield() {}
+
+void power_irq(uint gpio, uint32_t events) {
+ printf("Power button pressed\n");
+}
+
+void drawFrame(uint8_t *buffer) {
+  memset(buffer, 0, VIDEO_BUFFER_SIZE);
+  for (int y = 0; y < 342; y++) {
+    if (y > 36 && y < 305) {
+      buffer[y * LINE_BYTES + 1] = 0b00000100;
+      buffer[(y + 1) * LINE_BYTES - 2] = 0b00100000;
+    }
+    if (y == 36 || y == 305) {
+      buffer[y * LINE_BYTES + 1] = 0b00000111;
+      buffer[(y + 1) * LINE_BYTES - 2] = 0b11100000;
+      for (int x = 2; x < LINE_BYTES - 2; x++) {
+        buffer[x + y * LINE_BYTES] = 0xFF;
+      }
+    }
+  }
+}
+
+void drawText(struct screen *screen, char *str, int col, int row) {
+  int len = strlen(str);
+  int line_chars = 512 / 6;
+  memset(screen->buffer, 0, VIDEO_BUFFER_SIZE);
+  for (int x = 0; x + col < line_chars && x < len; x++) {
+    screen_draw_codepoint(screen, row, col + x, str[x], FONT_NORMAL, false, false, false, 0xf, 0x0);
+  }
+}
 
 int main() {
   stdio_init_all();
@@ -37,8 +72,28 @@ int main() {
   initVideoDMA(buffers);
   startVideo(buffers, video_pio);
 
-  memset(buffers->backBuffer, 0xFF, VIDEO_BUFFER_SIZE);
-  swapBuffers(buffers);
+  struct screen screen = {
+    .format = {
+      .cols = 80,
+      .rows = 24
+    },
+    .char_width = 6,
+    .char_height = 11,
+    .normal_bitmap_font = &normal_font,
+    .bold_bitmap_font = &bold_font,
+    .buffer = *buffers->frontBuffer,
+  };
+
+  drawFrame(screen.buffer);
+  screen_test_fonts(&screen, FONT_NORMAL);
+
+  sleep_ms(3000);
+
+  for (int s = 1; s < 24; s++) {
+    sleep_ms(250);
+    screen_scroll(&screen, SCROLL_UP, 1, 24, 1, 0, yield);
+  }
+  screen_test_fonts(&screen, FONT_NORMAL);
 
   // ADB
 
@@ -107,9 +162,7 @@ int main() {
         break;
     }
   }
-  //*/
 
-  /*
   char patterns[3] = {
     0xF0,
     0xAA,
@@ -140,5 +193,4 @@ int main() {
       sleep_ms(5000);
     }
   }
-  */
 }

@@ -9,12 +9,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS true)
 
 pico_sdk_init()
 
+add_custom_target(font_data
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/fonts/generate.py -b ${CMAKE_CURRENT_SOURCE_DIR}/fonts/erusfontbold.bdf -o ${CMAKE_CURRENT_SOURCE_DIR}/fonts/font_data.h ${CMAKE_CURRENT_SOURCE_DIR}/fonts/erusfont.bdf
+  COMMENT "Generating font file..."
+)
+
 add_executable(mac_terminal)
+add_dependencies(mac_terminal font_data)
 
 pico_generate_pio_header(mac_terminal ${CMAKE_CURRENT_LIST_DIR}/crt/crt.pio)
 pico_generate_pio_header(mac_terminal ${CMAKE_CURRENT_LIST_DIR}/adb/adb.pio)
 
-target_sources(mac_terminal PRIVATE main.c crt/crt.c adb/adb.c)
+target_sources(mac_terminal PRIVATE main.c crt/crt.c adb/adb.c fonts/font.c terminal/screen.c)
 
 target_link_libraries(mac_terminal PRIVATE pico_stdlib hardware_pio hardware_dma)
 
@@ -23,3 +29,7 @@ pico_add_extra_outputs(mac_terminal)
 add_custom_command(TARGET mac_terminal POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/compile_commands.json ${CMAKE_CURRENT_LIST_DIR}
 )
+
+#add_custom_command(TARGET mac_terminal POST_BUILD
+#  COMMAND openocd -f interface/picoprobe.cfg -f target/rp2040.cfg -c "program ${CMAKE_BINARY_DIR}/mac_terminal.elf verify reset exit"
+#)
