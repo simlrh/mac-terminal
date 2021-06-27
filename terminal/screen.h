@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "../fonts/font.h"
+#include "terminal.h"
 
 typedef uint8_t color_t;
 typedef uint8_t character_t;
@@ -13,25 +14,6 @@ typedef uint16_t codepoint_t;
 
 #define DEFAULT_ACTIVE_COLOR 0xf
 #define DEFAULT_INACTIVE_COLOR 0
-
-enum font
-{
-  FONT_NORMAL = 0,
-  FONT_BOLD = 1,
-  FONT_THIN = 2,
-};
-
-struct format
-{
-  uint8_t rows;
-  uint8_t cols;
-};
-
-enum scroll
-{
-  SCROLL_UP,
-  SCROLL_DOWN
-};
 
 struct screen
 {
