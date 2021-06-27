@@ -9,6 +9,7 @@
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
+#include "hardware/watchdog.h"
 
 #include "crt/crt.h"
 #include "adb/adb.h"
@@ -20,6 +21,7 @@
 #include "terminal/terminal.h"
 #include "terminal/terminal_config_ui.h"
 #include "terminal/keys.h"
+#include "adb/keyboard.h"
 
 #define SERIAL_RX_BUF_SIZE 8192
 char SerialRxBuf[SERIAL_RX_BUF_SIZE];
@@ -33,9 +35,15 @@ int SerialTxBufTail = 0;
 
 #define LOCAL_BUFFER_SIZE 64
 static character_t local_buffer[LOCAL_BUFFER_SIZE];
-
 static size_t local_head = 0;
 static size_t local_tail = 0;
+
+#define KEYBOARD_BUFFER_SIZE 256
+uint8_t keyboard_buffer[KEYBOARD_BUFFER_SIZE];
+volatile int keyboard_buffer_head = 0;
+volatile int keyboard_buffer_tail = 0;
+
+struct keyboard global_keyboard;
 
 #define FONT_WIDTH 6
 #define FONT_HEIGHT 11
@@ -44,11 +52,9 @@ static size_t local_tail = 0;
 #define CHAR_WIDTH     6
 
 #define UART_ID uart0
-#define BAUD_RATE 115200
 
 #define UART_TX_PIN 0
 #define UART_RX_PIN 1
-
 
 static struct screen screen_24_rows = {
     .format =
@@ -132,7 +138,27 @@ struct terminal_config terminal_config = {
 };
 
 void yield() {
-  tight_loop_contents();
+  if (keyboard_buffer_tail != keyboard_buffer_head) {
+    uint8_t scancode = keyboard_buffer[keyboard_buffer_tail];
+    keyboard_buffer_tail++;
+
+    if (keyboard_buffer_tail == KEYBOARD_BUFFER_SIZE) {
+      keyboard_buffer_tail = 0;
+    }
+
+    keyboard_handle_code(&global_keyboard, scancode);
+    if (global_terminal) {
+      terminal_keyboard_handle_key(
+          global_terminal, global_keyboard.lshift || global_keyboard.rshift,
+          global_keyboard.lalt, global_keyboard.ralt,
+          global_keyboard.lctrl || global_keyboard.rctrl, global_keyboard.keys[0]);
+    }
+  }
+  
+  while(uart_is_writable(UART_ID) && SerialTxBufTail != SerialTxBufHead) { // while Tx is free and there is data to send
+    uart_putc_raw(UART_ID, SerialTxBuf[SerialTxBufTail++]);// send the byte
+    SerialTxBufTail = SerialTxBufTail % SERIAL_TX_BUF_SIZE; // advance the tail of the queue
+  }
 }
 
 static void uart_transmit(character_t *characters, size_t size, size_t head) {
@@ -214,6 +240,7 @@ static void keyboard_set_leds_callback(struct lock_state state) {
 }
 
 static void reset_callback() {
+  watchdog_enable(1,1);
 }
 
 struct repeating_timer timer;
@@ -266,7 +293,6 @@ void initSerial(void) {
   uart_set_hw_flow(UART_ID, false, false);
   uart_set_format(UART_ID, data_bits, stop_bits, parity);
   uart_set_fifo_enabled(UART_ID, false);
-  uart_set_translate_crlf(UART_ID, true);
 
   gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
   gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
@@ -279,7 +305,28 @@ void initSerial(void) {
   uart_set_irq_enables(UART_ID, true, false);
 }
 
+void adb_handler(uint8_t address, uint8_t reg, uint8_t *data, size_t len) {
+  if (address == 2 && reg == 0) {
+    for (size_t i = 0; i < len; i++) {
+      keyboard_buffer[keyboard_buffer_head] = data[i];
+      keyboard_buffer_head++;
+
+      if (keyboard_buffer_head == KEYBOARD_BUFFER_SIZE) {
+        keyboard_buffer_head = 0;
+      }
+    }
+  }
+}
+
 int main() {
+
+  keyboard_init(&global_keyboard);
+
+  // ADB
+  PIO adb_pio = pio1;
+  int adb_pin = 6;
+
+  initAdbPio(adb_pin, adb_handler);
 
   // VIDEO
 
@@ -297,6 +344,23 @@ int main() {
   initVideoPIO(video_pio, video_pin, hsync_pin, vsync_pin);
   initVideoDMA(buffers);
   startVideo(buffers, video_pio);
+
+#define LINE_BYTES 64
+
+  memset(buffers->frontBuffer, 0, VIDEO_BUFFER_SIZE);
+  for (int y = 0; y < 342; y++) {
+    if (y > 36 && y < 305) {
+      (*buffers->frontBuffer)[y * LINE_BYTES + 1] = 0b00000100;
+      (*buffers->frontBuffer)[(y + 1) * LINE_BYTES - 2] = 0b00100000;
+    }
+    if (y == 36 || y == 305) {
+      (*buffers->frontBuffer)[y * LINE_BYTES + 1] = 0b00000111;
+      (*buffers->frontBuffer)[(y + 1) * LINE_BYTES - 2] = 0b11100000;
+      for (int x = 2; x < LINE_BYTES - 2; x++) {
+        (*buffers->frontBuffer)[x + y * LINE_BYTES] = 0xFF;
+      }
+    }
+  }
 
   screen_24_rows.buffer = screen_30_rows.buffer = *buffers->frontBuffer;
 
