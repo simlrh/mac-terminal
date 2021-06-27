@@ -19,6 +19,9 @@
 #define Y_MARGIN 39
 
 void setSixBitsAt(uint8_t *buffer, uint8_t sixBits, int row, int col, int line) {
+  if (row < 0 || col < 0) {
+    return;
+  }
   int x = X_MARGIN + col * CHAR_WIDTH_PIXELS;
   int y = Y_MARGIN + row * CHAR_HEIGHT_LINES + line;
 
@@ -65,7 +68,7 @@ void clear_line(struct screen *screen, color_t inactive, size_t row, size_t line
   uint32_t startPixel = X_MARGIN + from_col * CHAR_WIDTH_PIXELS;
   uint32_t endPixel = X_MARGIN + to_col * CHAR_WIDTH_PIXELS;
 
-  uint32_t offset = (Y_MARGIN + row * CHAR_HEIGHT_LINES + line) * SCREEN_WIDTH_BYTES;
+  uint32_t offset = (Y_MARGIN + (row * CHAR_HEIGHT_LINES) + line) * SCREEN_WIDTH_BYTES;
   uint16_t startByte = offset + (startPixel / 8 + ((startPixel % 8) ? 1 : 0));
   uint16_t endByte = offset + (endPixel / 8);
 
@@ -183,12 +186,18 @@ void screen_scroll(struct screen *screen, enum scroll scroll, size_t from_row,
 
   if (scroll == SCROLL_DOWN) {
     for (int i = to_row - from_row - 1; i >= 0; i--) {
+      if (from_row + rows + i >= ROWS) {
+        continue;
+      }
       copy_cols(screen, from_row + i, 0, from_row + rows + i, 0, COLS, yield);
     }
 
     screen_clear_rows(screen, from_row, from_row + rows, inactive, yield);
   } else if (scroll == SCROLL_UP) {
     for (int i = 0; i < to_row - from_row; i++) {
+      if (from_row + i < rows) {
+        continue;
+      }
       copy_cols(screen, from_row + i, 0, from_row - rows + i, 0, COLS, yield);
     }
 

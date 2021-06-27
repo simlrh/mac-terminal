@@ -16,6 +16,7 @@ target_sources(
   main.c
   crt/crt.c
   adb/adb.c
+  adb/keyboard.c
   fonts/font.c
   terminal/screen.c
   terminal/terminal.c
